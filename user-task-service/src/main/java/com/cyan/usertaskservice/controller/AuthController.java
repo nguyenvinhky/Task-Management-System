@@ -10,15 +10,20 @@ import jdk.jshell.spi.ExecutionControl;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
 
+@RestController
+@RequestMapping("/auth")
 public class AuthController {
-
 
     @Autowired
     private UserRepository userRepository;
@@ -29,7 +34,7 @@ public class AuthController {
     @Autowired
     private CustomerUserServiceimplementation customerUserDetails;
 
-    @PostMapping("signup")
+    @PostMapping("/signup")
     public ResponseEntity<AuthResponse> CreateUserHandler(
             @RequestBody User user) throws Exception{
 
@@ -40,7 +45,7 @@ public class AuthController {
 
         User isEmailExist = userRepository.findByEmail(email);
 
-        if (isEmailExist == null){
+        if (isEmailExist != null){
             throw new Exception("Email is already used with another account");
         }
 
@@ -84,4 +89,21 @@ public class AuthController {
 
         return new ResponseEntity<>(authResponse, HttpStatus.OK);
     }
+
+    private Authentication authentication(String username, String password){
+        UserDetails userDetails = customerUserDetails.loadUserByUsername(username);
+
+        System.out.println("Sign in userDetails - " + userDetails);
+
+        if (userDetails == null){
+            System.out.println("Sign in userDetails - null " + userDetails);
+            throw new BadCredentialsException("Invalid username or password");
+        }
+        if (!passwordEncoder.matches(password, userDetails.getPassword())){
+            System.out.println("Sign in userDetails - password not match " + userDetails);
+            throw new BadCredentialsException("Invalid username or password");
+        }
+        return new UsernamePasswordAuthenticationToken(userDetails, null, userDetails.getAuthorities());
+    }
+
 }
